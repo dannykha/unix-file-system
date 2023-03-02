@@ -86,13 +86,17 @@ i32 fsRead(i32 fd, i32 numb, void* buf) {
   i32 fbn = bfsTell(fd) / BYTESPERBLOCK;
   i32 inum = bfsFdToInum(fd);
   if (numb > BYTESPERBLOCK) {
+    // fetch the block and allocate buffer
     i8 wholeBuffer[numb];
     int bytesRead = 0;
     int remainingBytes = numb;
     while (remainingBytes > 0) {
+      // storing a single block in a allocated buffer
       i8 blockBuffer[BYTESPERBLOCK];
+      // reading block from disc
       bfsRead(inum, fbn, blockBuffer);
       int bytesToRead;
+      // determine bytes to read from the block
       if (remainingBytes > BYTESPERBLOCK) {
         bytesToRead = BYTESPERBLOCK;
       } 
@@ -105,12 +109,13 @@ i32 fsRead(i32 fd, i32 numb, void* buf) {
       fbn++;
     }
     memcpy(buf, wholeBuffer, numb);
+    // counting left over zeros in the last block
     int notRead = 0;
     fbn--;
     i8 blockBuffer[BYTESPERBLOCK];
     bfsRead(inum, fbn, blockBuffer);
-    for (int i = BYTESPERBLOCK - 1; i >= 0; i--) {
-      if (blockBuffer[i] == 0) {
+    for (int i = 0; i < BYTESPERBLOCK; i++) {
+      if (blockBuffer[BYTESPERBLOCK - i - 1] == 0) {
         notRead++;
       } 
       else {
@@ -193,12 +198,15 @@ i32 fsSize(i32 fd) {
 // destination file.  On success, return 0.  On failure, abort
 // ============================================================================
 i32 fsWrite(i32 fd, i32 numb, void* buf) {
+  // copy data to buffer
   i8 wholeBuffer[numb]; 
   memcpy(wholeBuffer, buf, numb);
   i32 fbn = bfsTell(fd) / BYTESPERBLOCK;
   i32 inum = bfsFdToInum(fd);
   i32 dbn = bfsFbnToDbn(inum, fbn);
+  // buffer allocation for the current block
   i8 blockBuffer[BYTESPERBLOCK] = {0};
+  // if block doesnt exist then allocate and set it to 0
   if (dbn < 0) {
     bfsAllocBlock(inum, fbn);
     dbn = bfsFbnToDbn(inum, fbn);
@@ -210,10 +218,11 @@ i32 fsWrite(i32 fd, i32 numb, void* buf) {
   int remainder = numb;
   int currBlockOffset = fsTell(fd) % BYTESPERBLOCK;
   while (remainder > 0) {
-    int currentBlockBytesLeft = BYTESPERBLOCK - currBlockOffset;
+    // determining remaining bytes
+    int currBytesLeft = BYTESPERBLOCK - currBlockOffset;
     int bytesToWrite;
-    if (remainder > currentBlockBytesLeft) {
-      bytesToWrite = currentBlockBytesLeft;
+    if (remainder > currBytesLeft) {
+      bytesToWrite = currBytesLeft;
     }     
     else {
       bytesToWrite = remainder;
@@ -224,6 +233,7 @@ i32 fsWrite(i32 fd, i32 numb, void* buf) {
     currBlockOffset = 0;
     fbn++;
     dbn = bfsFbnToDbn(inum, fbn);
+    // block doesnt exist then allocate and set it to 0
     if (dbn < 0) {
       bfsAllocBlock(inum, fbn);
       dbn = bfsFbnToDbn(inum, fbn);
