@@ -85,11 +85,12 @@ i32 fsOpen(str fname) {
 i32 fsRead(i32 fd, i32 numb, void* buf) {
   i32 fbn = bfsTell(fd) / BYTESPERBLOCK;
   i32 inum = bfsFdToInum(fd);
-  if (numb > BYTESPERBLOCK) {
+  int tempNumb = numb;
+  if (tempNumb > BYTESPERBLOCK) {
     // fetch the block and allocate buffer
-    i8 wholeBuffer[numb];
+    i8 wholeBuffer[tempNumb];
     int bytesRead = 0;
-    int remainingBytes = numb;
+    int remainingBytes = tempNumb;
     while (remainingBytes > 0) {
       // storing a single block in a allocated buffer
       i8 blockBuffer[BYTESPERBLOCK];
@@ -108,7 +109,7 @@ i32 fsRead(i32 fd, i32 numb, void* buf) {
       remainingBytes -= bytesToRead;
       fbn++;
     }
-    memcpy(buf, wholeBuffer, numb);
+    memcpy(buf, wholeBuffer, tempNumb);
     // counting left over zeros in the last block
     int notRead = 0;
     fbn--;
@@ -122,15 +123,15 @@ i32 fsRead(i32 fd, i32 numb, void* buf) {
         break;
       }
     }
-    numb -= notRead;
+    tempNumb -= notRead;
   } 
   else {
     i8 wholeBuffer[BYTESPERBLOCK];
     bfsRead(inum, fbn, wholeBuffer);
-    memcpy(buf, wholeBuffer, numb);
+    memcpy(buf, wholeBuffer, tempNumb);
   }
-  fsSeek(fd, numb, SEEK_CUR);
-  return numb;
+  fsSeek(fd, tempNumb, SEEK_CUR);
+  return tempNumb;
 }
 
 
